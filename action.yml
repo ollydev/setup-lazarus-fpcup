@@ -1,0 +1,15 @@
+name: 'Setup Lazarus - fpcup'
+description: 'Setup Lazarus using fpcup'
+inputs:
+  cpu: 
+    required: true
+  laz-url: 
+    required: true
+  fpc-url: 
+    required: true
+runs:
+  using: 'node12'
+  main: 'dist/index/index.js'
+  post: 'dist/post/index.js'
+  post-if: env.SAVE_CACHE_KEY != ''
+
