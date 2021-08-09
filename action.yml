@@ -3,9 +3,9 @@ description: 'Setup Lazarus using fpcup'
 inputs:
   cpu: 
     required: true
-  laz-url: 
+  laz-branch: 
     required: true
-  fpc-url: 
+  fpc-branch: 
     required: true
 runs:
   using: 'node12'

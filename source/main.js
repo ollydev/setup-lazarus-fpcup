@@ -1,14 +1,14 @@
 // npm run build && git add -A && git commit -m "dev" && git push
 
 const core = require('@actions/core');
-const exec = require("@actions/exec");
-const tc = require('@actions/tool-cache');
+const exec = require('@actions/exec');
+const toolcache = require('@actions/tool-cache');
 const cache = require('@actions/cache');
 const process = require('process');
 const path = require('path');
-const md5 = require('md5');
 
-const cacheKey = process.platform + '-' + core.getInput('cpu') + '@' + md5(core.getInput('laz-url') + core.getInput('fpc-url'));
+const dir = path.normalize(path.resolve('../laz')).replace(/\\/g, "/");
+const cacheKey = '[' + process.platform + '][' + core.getInput('cpu') + '][' + core.getInput('fpc-branch') + '][' + core.getInput('laz-branch') + ']';
 
 async function bash(command_line) {
     await exec.exec('bash', ['-c', command_line.join(' ')]);
@@ -19,17 +19,17 @@ async function install_fpcup(cpu) {
     var dict = {};
 
     dict['linux'] = {
-      'x86_64': "https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/1.8.2s1/fpclazup-x86_64-linux",
-      'aarch64': "https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/1.8.2s1/fpclazup-x86_64-linux"
+      'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-linux',
+      'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-linux'
     }
 
     dict['win32'] = {
-      'i386': "https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/1.8.2s1/fpclazup-i386-win32.exe",
-      'x86_64': "https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/1.8.2s1/fpclazup-x86_64-win64.exe"
+      'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-i386-win32.exe',
+      'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-win64.exe'
     }
 
     dict['darwin'] = {
-      'x86_64': "https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/1.8.2s1/fpclazup-x86_64-darwin"
+      'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-darwin'
     }
     
     try {
@@ -38,13 +38,13 @@ async function install_fpcup(cpu) {
         throw new Error('Invalid cpu "' + cpu + '" on platform "' + process.platform + '"');
     }
     
-    await tc.downloadTool(dict[process.platform][cpu], 'fpcup');
+    await toolcache.downloadTool(dict[process.platform][cpu], 'fpcup');
     await bash(['chmod +x fpcup']);
 }
 
 async function restore_lazarus() {
 
-    var key = await cache.restoreCache(['.laz'], cacheKey);
+    var key = await cache.restoreCache([dir], cacheKey);
     if (key != null) {
         console.log('Restored lazarus from cache');
     }
@@ -56,11 +56,13 @@ async function install_lazarus() {
 
     console.log('Installing Lazarus');
 
-    await bash(['mkdir -p .laz']);
+    await bash(['mkdir -p ' + dir]);
     await bash(['./fpcup',
-                '--fpcURL=' + core.getInput('fpc-url'),
-                '--lazURL=' + core.getInput('laz-url'),
-                '--installdir=.laz',
+                '--fpcURL=gitlab',
+                '--lazURL=gitlab',
+                '--fpcBranch=' + core.getInput('fpc-branch'),
+                '--lazBranch=' + core.getInput('laz-branch'),
+                '--installdir=' + dir,
                 '--only=docker',
                 '--noconfirm'
                ]);
@@ -70,38 +72,54 @@ async function install_cross_compiler(cpu) {
     
     if (cpu =='aarch64') {
         
-        console.log('Installing cross compiler: aarch64');
+        console.log('Installing cross compiler: AArch64');
 
-        await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), '.laz/');
-        await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), '.laz/cross/bin');
+        await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
+        await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
         
         await bash(['./fpcup',
-                    '--installdir=.laz',
+                    '--installdir=' + dir,
                     '--ostarget=linux',
                     '--cputarget=aarch64',
                     '--only=FPCCleanOnly,FPCBuildOnly',
-                    '--crossbindir=.laz/cross/bin',
-                    '--crosslibdir=.laz/cross/lib/aarch64-linux',
+                    '--crossbindir=' + path.join(dir, 'cross/bin'),
+                    '--crosslibdir=' + path.join(dir, 'cross/lib/aarch64-linux'),
                     '--noconfirm',
                     '--verbose'
                    ]);        
     }
 }
 
+async function install_dependencies(platform) {
+
+	if (platform == 'linux') {
+	
+		console.log('Installing dependencies: Linux');
+		
+		await bash(['sudo apt-get update']);
+		await bash(['sudo apt-get -m -y install libgtk2.0-dev libpango1.0-dev libxtst-dev']);
+	}
+} 
+
 async function run() {
 
+	console.log('Install Directory:', dir);
+	console.log('Cache Key: ', cacheKey);
+
     try {
+    	await install_dependencies(process.platform);
+    
         if (await restore_lazarus() == false) {
             
             await install_fpcup(core.getInput('cpu'));
             await install_lazarus();
             await install_cross_compiler(core.getInput('cpu'));
             
-            core.exportVariable('SAVE_CACHE_DIR', '.laz');
+            core.exportVariable('SAVE_CACHE_DIR', dir);
             core.exportVariable('SAVE_CACHE_KEY', cacheKey);
         }
 
-        core.addPath(path.join(process.cwd(), '.laz/lazarus'));
+        core.addPath(path.join(dir, 'lazarus'));
     } catch (error) {
         core.setFailed(error.message);
     }

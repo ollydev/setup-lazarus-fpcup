@@ -48,8 +48,8 @@ jobs:
         uses: ./
         with:
           cpu: ${{ matrix.config.cpu }}
-          laz-url: https://svn.freepascal.org/svn/lazarus/tags/lazarus_2_2_0_RC1/
-          fpc-url: https://svn.freepascal.org/svn/fpc/tags/release_3_2_2_rc1/
+          laz-branch: lazarus_2_2_0_RC1
+          fpc-branch: release_3_2_2_rc1
       
       - name: Build Test
         run: |

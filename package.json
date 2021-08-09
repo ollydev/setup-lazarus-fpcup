@@ -22,7 +22,6 @@
     "@actions/core": "^1.4.0",
     "@actions/exec": "^1.1.0",
     "@actions/tool-cache": "^1.7.1",
-    "md5": "^2.3.0",
     "os": "^0.1.2",
     "path": "^0.12.7",
     "process": "^0.11.10"
