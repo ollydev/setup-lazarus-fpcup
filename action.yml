@@ -7,6 +7,8 @@ inputs:
     required: true
   fpc-branch: 
     required: true
+  fpcup-url:
+    required: false
 runs:
   using: 'node12'
   main: 'dist/index/index.js'

@@ -60096,44 +60096,61 @@ const cache = __nccwpck_require__(7799);
 const process = __nccwpck_require__(1765);
 const path = __nccwpck_require__(5622);
 
-const dir = path.normalize(path.resolve('../laz')).replace(/\\/g, "/");
-const cacheKey = '[' + process.platform + '][' + core.getInput('cpu') + '][' + core.getInput('fpc-branch') + '][' + core.getInput('laz-branch') + ']';
+var fpcup_downloads = {};
+
+fpcup_downloads['linux'] = {
+  'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.1/fpclazup-x86_64-linux',
+  'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.1/fpclazup-x86_64-linux'
+}
+
+fpcup_downloads['win32'] = {
+  'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.1/fpclazup-i386-win32.exe',
+  'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.1/fpclazup-x86_64-win64.exe'
+}
+
+fpcup_downloads['darwin'] = {
+  'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.1/fpclazup-x86_64-darwin'
+}
+
+var cacheKey = '';
+var fpcupURL, fpcupPath = '';
+
+async function init(platform, cpu, fpcup, fpcBranch, lazBranch) {
+
+	fpcupURL = fpcup;
+	if (fpcupURL == '') {
+		try {
+		    fpcupURL = fpcup_downloads[platform][cpu];
+		} catch {
+		    throw new Error('Invalid cpu "' + cpu + '" on platform "' + platform + '"');
+		}	
+	}
+
+	cacheKey = '[' + fpcupURL + '][' + cpu + '][' + fpcBranch + '][' + lazBranch + ']';
+	
+	fpcupPath = path.resolve('../laz');
+	fpcupPath = path.normalize(fpcupPath).replace(/\\/g, "/");
+	
+	console.log('cacheKey: ', cacheKey);
+	console.log('fpcupURL: ', fpcupURL);
+	console.log('fpcupPath: ', fpcupPath);
+} 
 
 async function bash(command_line) {
     await exec.exec('bash', ['-c', command_line.join(' ')]);
 }
 
-async function install_fpcup(cpu) {
+async function install_fpcup() {
 
-    var dict = {};
+	console.log('Downloading: ', fpcupPath);
 
-    dict['linux'] = {
-      'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-linux',
-      'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-linux'
-    }
-
-    dict['win32'] = {
-      'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-i386-win32.exe',
-      'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-win64.exe'
-    }
-
-    dict['darwin'] = {
-      'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.0.0e/fpclazup-x86_64-darwin'
-    }
-    
-    try {
-        console.log('Downloading: ', dict[process.platform][cpu]);
-    } catch {
-        throw new Error('Invalid cpu "' + cpu + '" on platform "' + process.platform + '"');
-    }
-    
-    await toolcache.downloadTool(dict[process.platform][cpu], 'fpcup');
+    await toolcache.downloadTool(fpcupURL, 'fpcup');
     await bash(['chmod +x fpcup']);
 }
 
 async function restore_lazarus() {
 
-    var key = await cache.restoreCache([dir], cacheKey);
+    var key = await cache.restoreCache([fpcupPath], cacheKey);
     if (key != null) {
         console.log('Restored lazarus from cache');
     }
@@ -60145,13 +60162,13 @@ async function install_lazarus() {
 
     console.log('Installing Lazarus');
 
-    await bash(['mkdir -p ' + dir]);
+    await bash(['mkdir -p ' + fpcupPath]);
     await bash(['./fpcup',
                 '--fpcURL=gitlab',
                 '--lazURL=gitlab',
                 '--fpcBranch=' + core.getInput('fpc-branch'),
                 '--lazBranch=' + core.getInput('laz-branch'),
-                '--installdir=' + dir,
+                '--installdir=' + fpcupPath,
                 '--only=docker',
                 '--noconfirm'
                ]);
@@ -60163,16 +60180,16 @@ async function install_cross_compiler(cpu) {
         
         console.log('Installing cross compiler: AArch64');
 
-        await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
-        await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
+        await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), fpcupPath);
+        await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(fpcupPath, 'cross/bin'));
         
         await bash(['./fpcup',
-                    '--installdir=' + dir,
+                    '--installdir=' + fpcupPath,
                     '--ostarget=linux',
                     '--cputarget=aarch64',
                     '--only=FPCCleanOnly,FPCBuildOnly',
-                    '--crossbindir=' + path.join(dir, 'cross/bin'),
-                    '--crosslibdir=' + path.join(dir, 'cross/lib/aarch64-linux'),
+                    '--crossbindir=' + path.join(fpcupPath, 'cross/bin'),
+                    '--crosslibdir=' + path.join(fpcupPath, 'cross/lib/aarch64-linux'),
                     '--noconfirm',
                     '--verbose'
                    ]);        
@@ -60192,23 +60209,21 @@ async function install_dependencies(platform) {
 
 async function run() {
 
-	console.log('Install Directory:', dir);
-	console.log('Cache Key: ', cacheKey);
-
     try {
+    	await init(process.platform, core.getInput('cpu'), core.getInput('fpcup-url'), core.getInput('fpc-branch'), core.getInput('laz-branch'));
     	await install_dependencies(process.platform);
     
         if (await restore_lazarus() == false) {
-            
-            await install_fpcup(core.getInput('cpu'));
+        
+            await install_fpcup();
             await install_lazarus();
             await install_cross_compiler(core.getInput('cpu'));
             
-            core.exportVariable('SAVE_CACHE_DIR', dir);
+            core.exportVariable('SAVE_CACHE_DIR', fpcupPath);
             core.exportVariable('SAVE_CACHE_KEY', cacheKey);
         }
 
-        core.addPath(path.join(dir, 'lazarus'));
+        core.addPath(path.join(fpcupPath, 'lazarus'));
     } catch (error) {
         core.setFailed(error.message);
     }
