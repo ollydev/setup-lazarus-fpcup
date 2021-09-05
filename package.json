@@ -24,7 +24,8 @@
     "@actions/tool-cache": "^1.7.1",
     "os": "^0.1.2",
     "path": "^0.12.7",
-    "process": "^0.11.10"
+    "process": "^0.11.10",
+    "sha1": "^1.1.1"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.29.0"

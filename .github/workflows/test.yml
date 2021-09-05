@@ -49,7 +49,7 @@ jobs:
         with:
           cpu: ${{ matrix.config.cpu }}
           laz-branch: lazarus_2_2_0_RC1
-          fpc-branch: release_3_2_2_rc1
+          fpc-branch: release_3_2_2
       
       - name: Build Test
         run: |

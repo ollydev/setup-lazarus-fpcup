@@ -2,11 +2,15 @@ name: 'Setup Lazarus - fpcup'
 description: 'Setup Lazarus using fpcup'
 inputs:
   cpu: 
-    required: true
+    required: false
   laz-branch: 
-    required: true
+    required: false
   fpc-branch: 
-    required: true
+    required: false
+  laz-revision: 
+    required: false
+  fpc-revision: 
+    required: false
   fpcup-url:
     required: false
 runs:
