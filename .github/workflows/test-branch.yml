@@ -1,4 +1,4 @@
-name: Test
+name: Test Branch
 
 on: 
   push:
@@ -56,6 +56,6 @@ jobs:
           lazbuild ${{ matrix.config.args }} test_lazarus.lpi
           
       - name: Run Test
-        if: matrix.config.name != 'AArch64'
+        if: matrix.config.name != 'AArch64' # AArch64 was cross compiled
         run: |
           ./test

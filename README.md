@@ -9,7 +9,10 @@ Caches that are not in a week are [removed](https://github.com/actions/cache#cac
   
 - `cpu`: CPU target to setup Lazarus for. 
 - `laz-branch`: Lazarus (gitlab) branch to install
+- `laz-revision`: Lazarus (gitlab) commit hash to install
 - `fpc-branch`: FPC (gitlab) branch to install
+- `fpc-revision`: FPC (gitlab) commit hash to install
+- `fpcup-url`: URL to fpcup exectuable to install. By default a hard coded version is used.
 
 Supported CPU targets:
 - `x86_64`: Windows, Linux, macOS
@@ -66,12 +69,12 @@ jobs:
       - uses: actions/checkout@v2.3.4
       
       - name: Install Lazarus
-        uses: ollydev/setup-lazarus-fpcup@v2
+        uses: ollydev/setup-lazarus-fpcup@v2.2
         with:
           cpu: ${{ matrix.config.cpu }}
-          laz-branch: lazarus_2_2_0_rc1
-          fpc-branch: release_3_2_2_rc1
-      
+          laz-branch: lazarus_2_2_0_rc1 # laz-revision: 58bab5263932362aa35a59bf0cd9439dfe87b25c
+          fpc-branch: release_3_2_2_rc1 # fpc-revision: 6e6c946e0fd1765f99110e12c79db27a400c6587
+		 
       - name: Test Installation
         if: matrix.config.name != 'AArch64' # AArch64 was cross compiled!
         run: |
