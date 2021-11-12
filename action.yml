@@ -11,8 +11,8 @@ inputs:
     required: false
   fpc-revision: 
     required: false
-  fpcup-url:
-    required: false
+  fpcup-release:
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index/index.js'
