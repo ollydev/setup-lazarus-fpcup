@@ -52,7 +52,9 @@ async function install_win32_cross(dir) {
 				'--verbose',
 				'--noconfirm',
 				'--installdir="' + dir + '"',
-				'--only="CrossWin64-32"',
+				'--ostarget=win32',
+        		'--cputarget=i386',
+        		'--only=FPCCleanOnly,FPCBuildOnly',
     		   ]);	
 }
 
@@ -99,7 +101,6 @@ async function install_lazarus(dir) {
 				lazVersion
     		  ]);
 
-
     /*
     var version = '';
     if (core.getInput('fpc-branch') != '') {
@@ -134,7 +135,6 @@ async function install_lazarus(dir) {
     ]);
     */
 
-
 	if (core.getInput('cpu') == 'i386') {
 		install_win32_cross(dir);
 	}
@@ -158,29 +158,31 @@ async function run() {
             throw new Error('Invalid cpu "' + core.getInput('cpu') + '" on platform "' + process.platform + '"');
         }
 
-		var key = util.format('[%s][%s][%s][%s][%s][%s]', [
+		key = util.format('[%s][%s][%s][%s][%s][%s]1', [
 							   url,
 							   core.getInput('cpu'),
 							   core.getInput('fpc-branch'),
 							   core.getInput('fpc-revision'),
 							   core.getInput('laz-branch'),
 							   core.getInput('laz-revision') 
-							 ]);
+							]);
+		
+		key = sha1(key); 
 
-        var dir = path.resolve('../laz');
-        var dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path
+        dir = path.resolve('../laz');
+        dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path
        
         core.info(url);
         core.info(dir);
 
-        if (await restore_lazarus(dir, sha1(key)) == false) {
+        if (await restore_lazarus(dir, key) == false) {
 
             await install_fpcup(url);
             await install_lazarus(dir);
 
             // Pass to post.js
             core.exportVariable('SAVE_CACHE_DIR', dir);
-            core.exportVariable('SAVE_CACHE_KEY', sha1(key));
+            core.exportVariable('SAVE_CACHE_KEY', key);
         }
 
         core.addPath(path.join(dir, 'lazarus'));
