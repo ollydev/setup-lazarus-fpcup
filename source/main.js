@@ -75,6 +75,32 @@ async function install_aarch64_cross(dir) {
 
 async function install_lazarus(dir) {
 
+    var fpcVersion = '';
+    if (core.getInput('fpc-branch') != '') {
+        fpcVersion = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
+    } else {
+        fpcVersion = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
+    }
+    
+    var lazVersion = '';
+    if (core.getInput('laz-branch') != '') {
+        lazVersion = '--lazBranch="' + core.getInput('laz-branch') + '"';
+    } else {
+        lazVersion = '--lazRevision="' + core.getInput('laz-revision') + '"';
+    }
+    
+    await bash(['./fpcup',
+				'--verbose',
+				'--noconfirm',
+				'--installdir="' + dir + '"',
+				'--only="docker"',
+				'--fpcURL="gitlab"',
+				fpcVersion,
+				lazVersion
+    		  ]);
+
+
+    /*
     var version = '';
     if (core.getInput('fpc-branch') != '') {
         version = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
@@ -106,6 +132,7 @@ async function install_lazarus(dir) {
         '--lazURL="gitlab"',
         version
     ]);
+    */
 
 
 	if (core.getInput('cpu') == 'i386') {
@@ -144,7 +171,6 @@ async function run() {
         var dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path
        
         core.info(url);
-        core.info(key);
         core.info(dir);
 
         if (await restore_lazarus(dir, sha1(key)) == false) {

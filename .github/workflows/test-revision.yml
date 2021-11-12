@@ -50,6 +50,7 @@ jobs:
           cpu: ${{ matrix.config.cpu }}
           laz-revision: 58bab5263932362aa35a59bf0cd9439dfe87b25c
           fpc-revision: 6e6c946e0fd1765f99110e12c79db27a400c6587
+          fpcup-release: v2.2.0c
       
       - name: Build Test
         run: |
