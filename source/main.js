@@ -16,7 +16,7 @@ const
             'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-linux'
         },
         'win32': {
-            'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-i386-win32.exe',
+            'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-win64.exe',
             'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-win64.exe'
         },
         'darwin': {
@@ -43,6 +43,16 @@ async function restore_lazarus(dir, key) {
     }
 
     return key != null;
+}
+
+async function install_win32_cross(dir) {
+	
+	await bash(['./fpcup',
+				'--verbose',
+				'--noconfirm',
+				'--installdir="' + dir + '"',
+				'--only="CrossWin64-32"',
+    		   ]);	
 }
 
 async function install_lazarus(dir) {
@@ -79,6 +89,11 @@ async function install_lazarus(dir) {
         version
     ]);
 
+
+	if (core.getInput('cpu') == 'i386') {
+		install_win32_cross(dir);
+		return;
+	}
 
     if (core.getInput('cpu') != 'aarch64') {
         return;
