@@ -24,7 +24,7 @@ jobs:
             
           - name: Windows 32  
             os: windows-latest
-            args: --cpu=i386
+            args: --os=win32 --cpu=i386
 
           - name: Linux 64
             os: ubuntu-latest
