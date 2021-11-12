@@ -21,24 +21,20 @@ jobs:
         config:            
           - name: Windows 64
             os: windows-latest
-            cpu: x86_64
             
           - name: Windows 32  
             os: windows-latest
-            cpu: i386
+            args: --cpu=i386
 
           - name: Linux 64
             os: ubuntu-latest
-            cpu: x86_64
           
           - name: AArch64  
             os: ubuntu-latest
-            cpu: aarch64
             args: --cpu=aarch64
             
           - name: MacOS 64
             os: macos-latest
-            cpu: x86_64
             args: --widgetset=cocoa
             
     steps:
@@ -47,7 +43,6 @@ jobs:
       - name: Install Lazarus
         uses: ./
         with:
-          cpu: ${{ matrix.config.cpu }}
           laz-branch: lazarus_2_2_0_RC1
           fpc-branch: release_3_2_2
           fpcup-release: v2.2.0c

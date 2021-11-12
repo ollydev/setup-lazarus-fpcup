@@ -12,17 +12,9 @@ const util = require('util');
 
 const
     fpcup_downloads = {
-        'linux': {
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-linux',
-            'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-linux'
-        },
-        'win32': {
-            'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-win64.exe',
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-win64.exe'
-        },
-        'darwin': {
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-darwin'
-        }
+        'linux' : 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-linux',
+        'win32' : 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-win64.exe',
+        'darwin': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-darwin'
     }
 
 async function bash(command_line) {
@@ -64,15 +56,15 @@ async function install_aarch64_cross(dir) {
     await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
 
     await bash(['./fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--ostarget=linux',
-        '--cputarget=aarch64',
-        '--only=FPCCleanOnly,FPCBuildOnly',
-        '--crossbindir="' + path.join(dir, 'cross/bin') + '"',
-        '--crosslibdir="' + path.join(dir, 'cross/lib/aarch64-linux') + '"',
-    ]);	
+				'--verbose',
+				'--noconfirm',
+				'--installdir="' + dir + '"',
+				'--ostarget=linux',
+				'--cputarget=aarch64',
+				'--only=FPCCleanOnly,FPCBuildOnly',
+				'--crossbindir="' + path.join(dir, 'cross/bin') + '"',
+				'--crosslibdir="' + path.join(dir, 'cross/lib/aarch64-linux') + '"',
+			   ]);	
 }
 
 async function install_lazarus(dir) {
@@ -99,7 +91,7 @@ async function install_lazarus(dir) {
 				'--fpcURL="gitlab"',
 				fpcVersion,
 				lazVersion
-    		  ]);
+    		   ]);
 
     /*
     var version = '';
@@ -135,40 +127,33 @@ async function install_lazarus(dir) {
     ]);
     */
 
-	if (core.getInput('cpu') == 'i386') {
+	if (process.platform == 'win32') {
 		install_win32_cross(dir);
 	}
-    if (core.getInput('cpu') == 'aarch64') {
+    if (process.platform == 'linux') {
         install_aarch64_cross(dir);
     }
 }
 
 async function run() {
 
-    try {
+    try 
+    {
         if (process.platform == 'linux') {
             await bash(['sudo apt-get update']);
             await bash(['sudo apt-get -m -y install libgtk2.0-dev libpango1.0-dev libxtst-dev']);
         }
 
         try {
-            url = fpcup_downloads[process.platform][core.getInput('cpu')];
-            url = util.format(url, core.getInput('fpcup-release'));
+            url = util.format(fpcup_downloads[process.platform], core.getInput('fpcup-release'));
         } catch {
-            throw new Error('Invalid cpu "' + core.getInput('cpu') + '" on platform "' + process.platform + '"');
+            throw new Error('Invalid platform "' + process.platform + '"');
         }
 
-		key = util.format('[%s][%s][%s][%s][%s][%s]1', [
-							   url,
-							   core.getInput('cpu'),
-							   core.getInput('fpc-branch'),
-							   core.getInput('fpc-revision'),
-							   core.getInput('laz-branch'),
-							   core.getInput('laz-revision') 
-							]);
+		key = sha1(
+		    util.format('[%s][%s][%s][%s][%s]', [url, core.getInput('fpc-branch'), core.getInput('fpc-revision'),core.getInput('laz-branch'), core.getInput('laz-revision')])
+		);
 		
-		key = sha1(key); 
-
         dir = path.resolve('../laz');
         dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path
        
