@@ -53,7 +53,7 @@ jobs:
             
           - name: AArch64  
             os: ubuntu-latest
-            args: --os=linux--cpu=aarch64
+            args: --os=linux --cpu=aarch64
             
           - name: MacOS 64
             os: macos-latest
