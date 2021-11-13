@@ -93,40 +93,6 @@ async function install_lazarus(dir) {
 				lazVersion
     		   ]);
 
-    /*
-    var version = '';
-    if (core.getInput('fpc-branch') != '') {
-        version = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
-    } else {
-        version = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
-    }
-
-    await bash(['./fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--only="FPCGetOnly,FPC"',
-        '--fpcURL="gitlab"',
-        version
-    ]);
-
-    var version = '';
-    if (core.getInput('laz-branch') != '') {
-        version = '--lazBranch="' + core.getInput('laz-branch') + '"';
-    } else {
-        version = '--lazRevision="' + core.getInput('laz-revision') + '"';
-    }
-
-    await bash(['./fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--only="LazarusGetOnly,LazBuildOnly"',
-        '--lazURL="gitlab"',
-        version
-    ]);
-    */
-
 	if (process.platform == 'win32') {
 		install_win32_cross(dir);
 	}

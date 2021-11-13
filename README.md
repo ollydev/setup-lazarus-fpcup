@@ -7,17 +7,11 @@ Caches that are not in a week are [removed](https://github.com/actions/cache#cac
 
 ### Inputs
   
-- `cpu`: CPU target to setup Lazarus for. 
+- `fpcup-release`: fpcup release tag to download and install Lazarus with
 - `laz-branch`: Lazarus (gitlab) branch to install
 - `laz-revision`: Lazarus (gitlab) commit hash to install
 - `fpc-branch`: FPC (gitlab) branch to install
 - `fpc-revision`: FPC (gitlab) commit hash to install
-- `fpcup-url`: URL to fpcup exectuable to install. By default a hard coded version is used.
-
-Supported CPU targets:
-- `x86_64`: Windows, Linux, macOS
-- `i386`: Windows
-- `aarch64`: Linux (Cross compiled)
 
 ---
 
@@ -47,36 +41,37 @@ jobs:
         config:            
           - name: Windows 64
             os: windows-latest
-            cpu: x86_64
+            args: --os=win64 --cpu=x86_64
             
           - name: Windows 32  
             os: windows-latest
-            cpu: i386
+            args: --os=win32 --cpu=i386
 
           - name: Linux 64
             os: ubuntu-latest
-            cpu: x86_64
-
+            args: --os=linux --cpu=x86_64
+            
           - name: AArch64  
             os: ubuntu-latest
-            cpu: aarch64
+            args: --os=linux--cpu=aarch64
             
           - name: MacOS 64
             os: macos-latest
-            cpu: x86_64
+            args: --os=darwin --cpu=x86_64 --widgetset=cocoa
             
     steps:
       - uses: actions/checkout@v2.3.4
       
       - name: Install Lazarus
         uses: ollydev/setup-lazarus-fpcup@v2.2
-        with:
-          cpu: ${{ matrix.config.cpu }}
+        with: 
+          fpcup-release: v2.2.0c
           laz-branch: lazarus_2_2_0_rc1 # laz-revision: 58bab5263932362aa35a59bf0cd9439dfe87b25c
           fpc-branch: release_3_2_2_rc1 # fpc-revision: 6e6c946e0fd1765f99110e12c79db27a400c6587
-		 
+      
       - name: Test Installation
         if: matrix.config.name != 'AArch64' # AArch64 was cross compiled!
         run: |
           lazbuild --version
 ```
+

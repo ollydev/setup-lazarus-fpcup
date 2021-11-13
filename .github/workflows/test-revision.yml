@@ -21,6 +21,7 @@ jobs:
         config:            
           - name: Windows 64
             os: windows-latest
+            args: --os=win64 --cpu=x86_64
             
           - name: Windows 32  
             os: windows-latest
@@ -28,14 +29,15 @@ jobs:
 
           - name: Linux 64
             os: ubuntu-latest
-          
+            args: --os=linux --cpu=x86_64
+            
           - name: AArch64  
             os: ubuntu-latest
-            args: --cpu=aarch64
+            args: --os=linux--cpu=aarch64
             
           - name: MacOS 64
             os: macos-latest
-            args: --widgetset=cocoa
+            args: --os=darwin --cpu=x86_64 --widgetset=cocoa
             
     steps:
       - uses: actions/checkout@v2.3.4
