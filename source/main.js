@@ -1,27 +1,19 @@
 // npm install
-// npm run build && git add -A && git commit -m "dev" && git push
-
+// npm run build && git add -A && git commit -m "testing" && git push
 const core = require('@actions/core');
 const exec = require('@actions/exec');
-const toolcache = require('@actions/tool-cache');
+const tc = require('@actions/tool-cache');
 const cache = require('@actions/cache');
 const process = require('process');
 const path = require('path');
 const sha1 = require('sha1');
+const util = require('util');
 
 const
     fpcup_downloads = {
-        'linux': {
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-linux',
-            'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-linux'
-        },
-        'win32': {
-            'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-i386-win32.exe',
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-win64.exe'
-        },
-        'darwin': {
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-darwin'
-        }
+        'linux':  'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-linux',
+        'win32':  'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-win64.exe',
+        'darwin': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-darwin'
     }
 
 async function bash(command_line) {
@@ -31,7 +23,7 @@ async function bash(command_line) {
 
 async function install_fpcup(url) {
 
-    await toolcache.downloadTool(url, 'fpcup');
+    await tc.downloadTool(url, 'fpcup');
     await bash(['chmod +x fpcup']);
 }
 
@@ -45,51 +37,26 @@ async function restore_lazarus(dir, key) {
     return key != null;
 }
 
-async function install_lazarus(dir) {
+async function install_win32_cross(dir) {
 
-    var version = '';
-    if (core.getInput('fpc-branch') != '') {
-        version = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
-    } else {
-        version = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
-    }
-
-    await bash(['./fpcup',
+    await bash([
+        './fpcup',
         '--verbose',
         '--noconfirm',
         '--installdir="' + dir + '"',
-        '--only="FPCGetOnly,FPC"',
-        '--fpcURL="gitlab"',
-        version
+        '--ostarget=win32',
+        '--cputarget=i386',
+        '--only=FPCCleanOnly,FPCBuildOnly',
     ]);
+}
 
-    var version = '';
-    if (core.getInput('laz-branch') != '') {
-        version = '--lazBranch="' + core.getInput('laz-branch') + '"';
-    } else {
-        version = '--lazRevision="' + core.getInput('laz-revision') + '"';
-    }
+async function install_aarch64_cross(dir) {
 
-    await bash(['./fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--only="LazarusGetOnly,LazBuildOnly"',
-        '--lazURL="gitlab"',
-        version
-    ]);
+    await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
+    await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
 
-
-    if (core.getInput('cpu') != 'aarch64') {
-        return;
-    }
-
-    console.log('Installing aarch64 cross compiler');
-
-    await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
-    await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
-
-    await bash(['./fpcup',
+    await bash([
+        './fpcup',
         '--verbose',
         '--noconfirm',
         '--installdir="' + dir + '"',
@@ -101,6 +68,50 @@ async function install_lazarus(dir) {
     ]);
 }
 
+async function install_lazarus(dir) {
+
+    var fpcVersion = '';
+    if (core.getInput('fpc-branch') != '') {
+        fpcVersion = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
+    } else {
+        fpcVersion = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
+    }
+
+    var lazVersion = '';
+    if (core.getInput('laz-branch') != '') {
+        lazVersion = '--lazBranch="' + core.getInput('laz-branch') + '"';
+    } else {
+        lazVersion = '--lazRevision="' + core.getInput('laz-revision') + '"';
+    }
+
+    await bash([
+        './fpcup',
+        '--verbose',
+        '--noconfirm',
+        '--installdir="' + dir + '"',
+        '--only=FPCGetOnly,FPC',
+        '--fpcURL=gitlab',
+        fpcVersion
+    ]);
+
+    await bash([
+        './fpcup',
+        '--verbose',
+        '--noconfirm',
+        '--installdir="' + dir + '"',
+        '--only=LazarusGetOnly,LazBuildOnly',
+        '--lazURL=gitlab',
+        lazVersion
+    ]);
+    
+    if (process.platform == 'win32') {
+        install_win32_cross(dir);
+    }
+    if (process.platform == 'linux') {
+        install_aarch64_cross(dir);
+    }
+}
+
 async function run() {
 
     try {
@@ -109,30 +120,27 @@ async function run() {
             await bash(['sudo apt-get -m -y install libgtk2.0-dev libpango1.0-dev libxtst-dev']);
         }
 
-        var url = core.getInput('fpcup-url');
-        if (url == '') {
-            try {
-                url = fpcup_downloads[process.platform][core.getInput('cpu')];
-            } catch {
-                throw new Error('Invalid cpu "' + core.getInput('cpu') + '" on platform "' + process.platform + '"');
-            }
+        try {
+            url = util.format(fpcup_downloads[process.platform], core.getInput('fpcup-release'));
+        } catch {
+            throw new Error('Invalid platform "' + process.platform + '"');
         }
 
-        var key = '[' + url + '][' + core.getInput('cpu') + '][' + core.getInput('fpc-branch') + '][' + core.getInput('fpc-revision') + '][' + core.getInput('laz-branch') + '][' + core.getInput('laz-revision') + ']';
-        var dir = path.resolve('../laz').replace(/\\/g, "/");
+        var key = sha1(
+            util.format('[%s][%s][%s][%s][%s]', [url, core.getInput('laz-branch'), core.getInput('laz-revision'), core.getInput('fpc-branch'), core.getInput('fpc-revision')])
+        );
 
-        core.info(url);
-        core.info(key);
-        core.info(dir);
+        var dir = path.resolve('../../fpcup');
+            dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path;
 
-        if (await restore_lazarus(dir, sha1(key)) == false) {
+        if (await restore_lazarus(dir, key) == false) {
 
             await install_fpcup(url);
             await install_lazarus(dir);
 
             // Pass to post.js
             core.exportVariable('SAVE_CACHE_DIR', dir);
-            core.exportVariable('SAVE_CACHE_KEY', sha1(key));
+            core.exportVariable('SAVE_CACHE_KEY', key);
         }
 
         core.addPath(path.join(dir, 'lazarus'));

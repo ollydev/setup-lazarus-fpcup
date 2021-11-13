@@ -1329,12 +1329,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
+exports.getIDToken = exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
 const command_1 = __nccwpck_require__(7351);
 const file_command_1 = __nccwpck_require__(717);
 const utils_1 = __nccwpck_require__(5278);
 const os = __importStar(__nccwpck_require__(2087));
 const path = __importStar(__nccwpck_require__(5622));
+const oidc_utils_1 = __nccwpck_require__(8041);
 /**
  * The code to exit an action
  */
@@ -1603,6 +1604,12 @@ function getState(name) {
     return process.env[`STATE_${name}`] || '';
 }
 exports.getState = getState;
+function getIDToken(aud) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield oidc_utils_1.OidcClient.getIDToken(aud);
+    });
+}
+exports.getIDToken = getIDToken;
 //# sourceMappingURL=core.js.map
 
 /***/ }),
@@ -1656,6 +1663,90 @@ exports.issueCommand = issueCommand;
 
 /***/ }),
 
+/***/ 8041:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OidcClient = void 0;
+const http_client_1 = __nccwpck_require__(9925);
+const auth_1 = __nccwpck_require__(3702);
+const core_1 = __nccwpck_require__(2186);
+class OidcClient {
+    static createHttpClient(allowRetry = true, maxRetry = 10) {
+        const requestOptions = {
+            allowRetries: allowRetry,
+            maxRetries: maxRetry
+        };
+        return new http_client_1.HttpClient('actions/oidc-client', [new auth_1.BearerCredentialHandler(OidcClient.getRequestToken())], requestOptions);
+    }
+    static getRequestToken() {
+        const token = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
+        if (!token) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable');
+        }
+        return token;
+    }
+    static getIDTokenUrl() {
+        const runtimeUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL'];
+        if (!runtimeUrl) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable');
+        }
+        return runtimeUrl;
+    }
+    static getCall(id_token_url) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            const httpclient = OidcClient.createHttpClient();
+            const res = yield httpclient
+                .getJson(id_token_url)
+                .catch(error => {
+                throw new Error(`Failed to get ID Token. \n 
+        Error Code : ${error.statusCode}\n 
+        Error Message: ${error.result.message}`);
+            });
+            const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
+            if (!id_token) {
+                throw new Error('Response json body do not have ID Token field');
+            }
+            return id_token;
+        });
+    }
+    static getIDToken(audience) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // New ID Token is requested from action service
+                let id_token_url = OidcClient.getIDTokenUrl();
+                if (audience) {
+                    const encodedAudience = encodeURIComponent(audience);
+                    id_token_url = `${id_token_url}&audience=${encodedAudience}`;
+                }
+                core_1.debug(`ID token url is ${id_token_url}`);
+                const id_token = yield OidcClient.getCall(id_token_url);
+                core_1.setSecret(id_token);
+                return id_token;
+            }
+            catch (error) {
+                throw new Error(`Error message: ${error.message}`);
+            }
+        });
+    }
+}
+exports.OidcClient = OidcClient;
+//# sourceMappingURL=oidc-utils.js.map
+
+/***/ }),
+
 /***/ 5278:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -1691,6 +1782,7 @@ function toCommandProperties(annotationProperties) {
     }
     return {
         title: annotationProperties.title,
+        file: annotationProperties.file,
         line: annotationProperties.startLine,
         endLine: annotationProperties.endLine,
         col: annotationProperties.startColumn,
@@ -57096,29 +57188,21 @@ var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
 // npm install
-// npm run build && git add -A && git commit -m "dev" && git push
-
+// npm run build && git add -A && git commit -m "testing" && git push
 const core = __nccwpck_require__(2186);
 const exec = __nccwpck_require__(1514);
-const toolcache = __nccwpck_require__(7784);
+const tc = __nccwpck_require__(7784);
 const cache = __nccwpck_require__(7799);
 const process = __nccwpck_require__(1765);
 const path = __nccwpck_require__(5622);
 const sha1 = __nccwpck_require__(6137);
+const util = __nccwpck_require__(1669);
 
 const
     fpcup_downloads = {
-        'linux': {
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-linux',
-            'aarch64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-linux'
-        },
-        'win32': {
-            'i386': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-i386-win32.exe',
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-win64.exe'
-        },
-        'darwin': {
-            'x86_64': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/v2.2.0b/fpclazup-x86_64-darwin'
-        }
+        'linux':  'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-linux',
+        'win32':  'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-win64.exe',
+        'darwin': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-darwin'
     }
 
 async function bash(command_line) {
@@ -57128,7 +57212,7 @@ async function bash(command_line) {
 
 async function install_fpcup(url) {
 
-    await toolcache.downloadTool(url, 'fpcup');
+    await tc.downloadTool(url, 'fpcup');
     await bash(['chmod +x fpcup']);
 }
 
@@ -57142,51 +57226,26 @@ async function restore_lazarus(dir, key) {
     return key != null;
 }
 
-async function install_lazarus(dir) {
+async function install_win32_cross(dir) {
 
-    var version = '';
-    if (core.getInput('fpc-branch') != '') {
-        version = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
-    } else {
-        version = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
-    }
-
-    await bash(['./fpcup',
+    await bash([
+        './fpcup',
         '--verbose',
         '--noconfirm',
         '--installdir="' + dir + '"',
-        '--only="FPCGetOnly,FPC"',
-        '--fpcURL="gitlab"',
-        version
+        '--ostarget=win32',
+        '--cputarget=i386',
+        '--only=FPCCleanOnly,FPCBuildOnly',
     ]);
+}
 
-    var version = '';
-    if (core.getInput('laz-branch') != '') {
-        version = '--lazBranch="' + core.getInput('laz-branch') + '"';
-    } else {
-        version = '--lazRevision="' + core.getInput('laz-revision') + '"';
-    }
+async function install_aarch64_cross(dir) {
 
-    await bash(['./fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--only="LazarusGetOnly,LazBuildOnly"',
-        '--lazURL="gitlab"',
-        version
-    ]);
+    await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
+    await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
 
-
-    if (core.getInput('cpu') != 'aarch64') {
-        return;
-    }
-
-    console.log('Installing aarch64 cross compiler');
-
-    await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
-    await toolcache.extractZip(await toolcache.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
-
-    await bash(['./fpcup',
+    await bash([
+        './fpcup',
         '--verbose',
         '--noconfirm',
         '--installdir="' + dir + '"',
@@ -57198,6 +57257,50 @@ async function install_lazarus(dir) {
     ]);
 }
 
+async function install_lazarus(dir) {
+
+    var fpcVersion = '';
+    if (core.getInput('fpc-branch') != '') {
+        fpcVersion = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
+    } else {
+        fpcVersion = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
+    }
+
+    var lazVersion = '';
+    if (core.getInput('laz-branch') != '') {
+        lazVersion = '--lazBranch="' + core.getInput('laz-branch') + '"';
+    } else {
+        lazVersion = '--lazRevision="' + core.getInput('laz-revision') + '"';
+    }
+
+    await bash([
+        './fpcup',
+        '--verbose',
+        '--noconfirm',
+        '--installdir="' + dir + '"',
+        '--only=FPCGetOnly,FPC',
+        '--fpcURL=gitlab',
+        fpcVersion
+    ]);
+
+    await bash([
+        './fpcup',
+        '--verbose',
+        '--noconfirm',
+        '--installdir="' + dir + '"',
+        '--only=LazarusGetOnly,LazBuildOnly',
+        '--lazURL=gitlab',
+        lazVersion
+    ]);
+    
+    if (process.platform == 'win32') {
+        install_win32_cross(dir);
+    }
+    if (process.platform == 'linux') {
+        install_aarch64_cross(dir);
+    }
+}
+
 async function run() {
 
     try {
@@ -57206,30 +57309,27 @@ async function run() {
             await bash(['sudo apt-get -m -y install libgtk2.0-dev libpango1.0-dev libxtst-dev']);
         }
 
-        var url = core.getInput('fpcup-url');
-        if (url == '') {
-            try {
-                url = fpcup_downloads[process.platform][core.getInput('cpu')];
-            } catch {
-                throw new Error('Invalid cpu "' + core.getInput('cpu') + '" on platform "' + process.platform + '"');
-            }
+        try {
+            url = util.format(fpcup_downloads[process.platform], core.getInput('fpcup-release'));
+        } catch {
+            throw new Error('Invalid platform "' + process.platform + '"');
         }
 
-        var key = '[' + url + '][' + core.getInput('cpu') + '][' + core.getInput('fpc-branch') + '][' + core.getInput('fpc-revision') + '][' + core.getInput('laz-branch') + '][' + core.getInput('laz-revision') + ']';
-        var dir = path.resolve('../laz').replace(/\\/g, "/");
+        var key = sha1(
+            util.format('[%s][%s][%s][%s][%s]', [url, core.getInput('laz-branch'), core.getInput('laz-revision'), core.getInput('fpc-branch'), core.getInput('fpc-revision')])
+        );
 
-        core.info(url);
-        core.info(key);
-        core.info(dir);
+        var dir = path.resolve('../../fpcup');
+            dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path;
 
-        if (await restore_lazarus(dir, sha1(key)) == false) {
+        if (await restore_lazarus(dir, key) == false) {
 
             await install_fpcup(url);
             await install_lazarus(dir);
 
             // Pass to post.js
             core.exportVariable('SAVE_CACHE_DIR', dir);
-            core.exportVariable('SAVE_CACHE_KEY', sha1(key));
+            core.exportVariable('SAVE_CACHE_KEY', key);
         }
 
         core.addPath(path.join(dir, 'lazarus'));
