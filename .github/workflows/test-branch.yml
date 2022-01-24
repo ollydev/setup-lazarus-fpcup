@@ -45,9 +45,9 @@ jobs:
       - name: Install Lazarus
         uses: ./
         with:
-          laz-branch: fixes_2_2
-          fpc-branch: fixes_3_2
-          fpcup-release: v2.2.0c
+          laz-branch: lazarus_2_2_0
+          fpc-branch: release_3_2_2
+          fpcup-release: v2.2.0h
       
       - name: Build Test
         run: |
