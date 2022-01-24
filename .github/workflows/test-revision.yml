@@ -45,9 +45,9 @@ jobs:
       - name: Install Lazarus
         uses: ./
         with:
-          laz-revision: 58bab5263932362aa35a59bf0cd9439dfe87b25c
-          fpc-revision: 6e6c946e0fd1765f99110e12c79db27a400c6587
-          fpcup-release: v2.2.0c
+          laz-revision: 87130707e7b820ae7167900041f9ea21087f2015 # lazarus 2_0_12
+          fpc-revision: f42f55aed84027529828dbb762e2094f7e547394 # release 3_2_0
+          fpcup-release: v2.2.0h
       
       - name: Build Test
         run: |

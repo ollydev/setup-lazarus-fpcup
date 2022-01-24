@@ -1,115 +1,79 @@
 // npm install
-// npm run build && git add -A && git commit -m "testing" && git push
+// npm run build && git add -A && git commit --amend -m "dev" && git push -f
 const core = require('@actions/core');
 const exec = require('@actions/exec');
 const tc = require('@actions/tool-cache');
 const cache = require('@actions/cache');
 const process = require('process');
 const path = require('path');
-const sha1 = require('sha1');
-const util = require('util');
+const base64 = require('base-64');
 
 const
     fpcup_downloads = {
-        'linux':  'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-linux',
-        'win32':  'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-win64.exe',
-        'darwin': 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/%s/fpclazup-x86_64-darwin'
+        'linux':  'fpclazup-x86_64-linux',
+        'win32':  'fpclazup-x86_64-win64.exe',
+        'darwin': 'fpclazup-x86_64-darwin'
     }
 
+const
+    fpc_branch    = core.getInput('fpc-branch');
+    fpc_revision  = core.getInput('fpc-revision');
+    laz_branch    = core.getInput('laz-branch');
+    laz_revision  = core.getInput('laz-revision');
+    
+    fpcup_release = core.getInput('fpcup-release');
+   
+const
+    fpcup_download_url = 'https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases/download/' + fpcup_release + '/' + fpcup_downloads[process.platform];
+	fpcup_executable   = unixify(path.join(path.dirname(process.env['GITHUB_WORKSPACE']), 'fpcup_executable'));
+	fpcup_install_path = unixify(path.join(path.dirname(process.env['GITHUB_WORKSPACE']), 'fpcup'));
+
+	cache_key = base64.encode(fpcup_download_url + '|' + fpc_branch + '|' + fpc_revision + '|' + laz_branch + '|' + laz_revision);
+
+function unixify(s) {
+
+	return s.split(path.sep).join(path.posix.sep);
+}
+	
 async function bash(command_line) {
 
     await exec.exec('bash', ['-c', command_line.join(' ')]);
 }
 
-async function install_fpcup(url) {
+async function restore_lazarus() {
 
-    await tc.downloadTool(url, 'fpcup');
-    await bash(['chmod +x fpcup']);
+	console.log('Looking for cache ' + base64.decode(cache_key));
+
+	return await cache.restoreCache([fpcup_install_path], cache_key) != null;
 }
 
-async function restore_lazarus(dir, key) {
+async function install_lazarus() {
 
-    var key = await cache.restoreCache([dir], key);
-    if (key != null) {
-        console.log('Restored lazarus from cache');
-    }
+    await tc.downloadTool(fpcup_download_url, fpcup_executable);
+    await bash(['chmod +x ' + fpcup_executable]);
 
-    return key != null;
-}
-
-async function install_win32_cross(dir) {
-
-    await bash([
-        './fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--ostarget=win32',
-        '--cputarget=i386',
-        '--only=FPCCleanOnly,FPCBuildOnly',
-    ]);
-}
-
-async function install_aarch64_cross(dir) {
-
-    await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/crosslibs_v1.1/CrossLibsLinuxAarch64.zip'), dir);
-    await tc.extractZip(await tc.downloadTool('https://github.com/LongDirtyAnimAlf/fpcupdeluxe/releases/download/linuxx64crossbins_v1.0/CrossBinsLinuxAarch64.zip'), path.join(dir, 'cross/bin'));
-
-    await bash([
-        './fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--ostarget=linux',
-        '--cputarget=aarch64',
-        '--only=FPCCleanOnly,FPCBuildOnly',
-        '--crossbindir="' + path.join(dir, 'cross/bin') + '"',
-        '--crosslibdir="' + path.join(dir, 'cross/lib/aarch64-linux') + '"',
-    ]);
-}
-
-async function install_lazarus(dir) {
-
-    var fpcVersion = '';
-    if (core.getInput('fpc-branch') != '') {
-        fpcVersion = '--fpcBranch="' + core.getInput('fpc-branch') + '"';
-    } else {
-        fpcVersion = '--fpcRevision="' + core.getInput('fpc-revision') + '"';
-    }
-
-    var lazVersion = '';
-    if (core.getInput('laz-branch') != '') {
-        lazVersion = '--lazBranch="' + core.getInput('laz-branch') + '"';
-    } else {
-        lazVersion = '--lazRevision="' + core.getInput('laz-revision') + '"';
-    }
-
-    await bash([
-        './fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--only=FPCGetOnly,FPC',
-        '--fpcURL=gitlab',
-        fpcVersion
-    ]);
-
-    await bash([
-        './fpcup',
-        '--verbose',
-        '--noconfirm',
-        '--installdir="' + dir + '"',
-        '--only=LazarusGetOnly,LazBuildOnly',
-        '--lazURL=gitlab',
-        lazVersion
-    ]);
+    fpcVersion = fpc_branch != '' ? '--fpcBranch=' + fpc_branch : '--fpcRevision=' + fpc_revision;
+    lazVersion = laz_branch != '' ? '--lazBranch=' + laz_branch : '--lazRevision=' + laz_revision;
     
-    if (process.platform == 'win32') {
-        install_win32_cross(dir);
-    }
-    if (process.platform == 'linux') {
-        install_aarch64_cross(dir);
-    }
+    await bash([fpcup_executable, fpcVersion, lazVersion, '--only=docker', '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
+
+    // install cross compiler
+    switch (process.platform) {
+		case "win32":
+			await bash([fpcup_executable, '--ostarget=win32', '--cputarget=i386', '--only=FPCCleanOnly,FPCBuildOnly', '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
+			break;
+		
+		case "linux":
+			await bash([fpcup_executable, '--ostarget=linux', '--cputarget=aarch64', '--only=FPCCleanOnly,FPCBuildOnly', '--autotools', '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
+			break;
+	}
+	
+	// causes cache restore issues with symlinks and macos bundles.
+	await bash(['find "' + fpcup_install_path + '" -name "*.app" -type d -prune -exec rm -rf {} +']);
+	
+	// pass to post.js
+	core.exportVariable('SAVE_CACHE_DIR', fpcup_install_path);
+    core.exportVariable('SAVE_CACHE_KEY', cache_key);
 }
 
 async function run() {
@@ -119,31 +83,12 @@ async function run() {
             await bash(['sudo apt-get update']);
             await bash(['sudo apt-get -m -y install libgtk2.0-dev libpango1.0-dev libxtst-dev']);
         }
-
-        try {
-            url = util.format(fpcup_downloads[process.platform], core.getInput('fpcup-release'));
-        } catch {
-            throw new Error('Invalid platform "' + process.platform + '"');
+        
+        if (await restore_lazarus() == false) {
+        	await install_lazarus();
         }
-
-        var key = sha1(
-            util.format('[%s][%s][%s][%s][%s]', [url, core.getInput('laz-branch'), core.getInput('laz-revision'), core.getInput('fpc-branch'), core.getInput('fpc-revision')])
-        );
-
-        var dir = path.resolve('../../fpcup');
-            dir = dir.split(path.sep).join(path.posix.sep); // Convert to unix path;
-
-        if (await restore_lazarus(dir, key) == false) {
-
-            await install_fpcup(url);
-            await install_lazarus(dir);
-
-            // Pass to post.js
-            core.exportVariable('SAVE_CACHE_DIR', dir);
-            core.exportVariable('SAVE_CACHE_KEY', key);
-        }
-
-        core.addPath(path.join(dir, 'lazarus'));
+        
+        core.addPath(path.join(fpcup_install_path, 'lazarus'));
     } catch (error) {
         core.setFailed(error.message);
     }
