@@ -1,17 +1,25 @@
-Action which builds FPC and Lazarus using [fpcup](https://github.com/LongDirtyAnimAlf/Reiniero-fpcup).
+Action which builds FPC and Lazarus using [fpcup](https://github.com/LongDirtyAnimAlf/Reiniero-fpcup). Useful for building projects with custom FPC & Lazarus versions.
 
-Installations are cached so expect that first builds could take ~10 minutes.
-Caches that are not in a week are [removed](https://github.com/actions/cache#cache-limits).
+Supported platforms:
+
+- Windows: win64, win32 (cross compiled)
+- Linux: x86_64, aarch64 (cross compiled)
+- Macos: x86_64, aarch64 (cross compiled)
+
+Installations are cached so expect that first builds could take ~20 minutes.
+Caches that are not in a week are [removed](https://github.com/actions/cache#cache-limits)
+
 
 ---
 
-### Inputs
+### Required Inputs
   
-- `fpcup-release`: fpcup release tag to download and install Lazarus with
-- `laz-branch`: Lazarus (gitlab) branch to install
-- `laz-revision`: Lazarus (gitlab) commit hash to install
-- `fpc-branch`: FPC (gitlab) branch to install
-- `fpc-revision`: FPC (gitlab) commit hash to install
+- `laz`: Lazarus GitLab branch or commit sha to install
+- `fpc`: FPC GitLab branch or commit sha to install
+
+### Optional Inputs
+
+- `fpcup`: fpcup version to use from https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases
 
 ---
 
@@ -19,15 +27,7 @@ Caches that are not in a week are [removed](https://github.com/actions/cache#cac
 
 ```yml
 name: Test
-
-on: 
-  push:
-    branches:
-      - '**'
-  pull_request:
-    branches:
-      - '**'
-      
+on: push
 jobs:
   test:
     name: ${{ matrix.config.name }}
@@ -51,27 +51,37 @@ jobs:
             os: ubuntu-latest
             args: --os=linux --cpu=x86_64
             
-          - name: AArch64  
+          - name: Linux (aarch64)  
             os: ubuntu-latest
             args: --os=linux --cpu=aarch64
             
           - name: MacOS 64
             os: macos-latest
             args: --os=darwin --cpu=x86_64 --widgetset=cocoa
+ 
+          - name: MacOS (aarch64)
+            os: macos-latest
+            args: --os=darwin --cpu=aarch64 --widgetset=cocoa 
             
     steps:
-      - uses: actions/checkout@v2.3.4
-      
       - name: Install Lazarus
-        uses: ollydev/setup-lazarus-fpcup@v2.2
-        with: 
-          fpcup-release: v2.2.0c
-          laz-branch: lazarus_2_2_0_rc1 # laz-revision: 58bab5263932362aa35a59bf0cd9439dfe87b25c
-          fpc-branch: release_3_2_2_rc1 # fpc-revision: 6e6c946e0fd1765f99110e12c79db27a400c6587
+        uses: ollydev/setup-lazarus-fpcup@v3
+        with:
+          laz: lazarus_2_2_4
+          fpc: release_3_2_2
+          # Commit SHA example
+          # laz: 537f43754ca77e39f15839299b9f7059e39f90dd
+          # fpc: 3f7bf0fd70b339a43889898efa59af4fec33ea84         
       
-      - name: Test Installation
-        if: matrix.config.name != 'AArch64' # AArch64 was cross compiled!
+      - uses: actions/checkout@v3.1.0      
+      
+      - name: Build Test
         run: |
-          lazbuild --version
+          lazbuild ${{ matrix.config.args }} test_lazarus.lpi
+          
+      - name: Run Test
+        if: matrix.config.name != 'Linux (aarch64)' && matrix.config.name != 'MacOS (aarch64)' # cross compiled
+        run: |
+          ./test
 ```
 

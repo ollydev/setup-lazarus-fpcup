@@ -1,5 +1,4 @@
 name: Test Branch
-
 on: 
   push:
     branches:
@@ -31,29 +30,32 @@ jobs:
             os: ubuntu-latest
             args: --os=linux --cpu=x86_64
             
-          - name: AArch64  
+          - name: Linux (aarch64)  
             os: ubuntu-latest
             args: --os=linux --cpu=aarch64
             
           - name: MacOS 64
             os: macos-latest
             args: --os=darwin --cpu=x86_64 --widgetset=cocoa
+ 
+          - name: MacOS (aarch64)
+            os: macos-latest
+            args: --os=darwin --cpu=aarch64 --widgetset=cocoa 
             
     steps:
-      - uses: actions/checkout@v2.3.4
-      
       - name: Install Lazarus
-        uses: ./
+        uses: ollydev/setup-lazarus-fpcup@master
         with:
-          laz-branch: lazarus_2_2_0
-          fpc-branch: release_3_2_2
-          fpcup-release: v2.2.0h
+          laz: lazarus_2_2_4
+          fpc: release_3_2_2
+      
+      - uses: actions/checkout@v3.1.0      
       
       - name: Build Test
         run: |
           lazbuild ${{ matrix.config.args }} test_lazarus.lpi
           
       - name: Run Test
-        if: matrix.config.name != 'AArch64' # AArch64 was cross compiled
+        if: matrix.config.name != 'Linux (aarch64)' && matrix.config.name != 'MacOS (aarch64)' # cross compiled
         run: |
           ./test
