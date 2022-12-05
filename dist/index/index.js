@@ -64787,12 +64787,27 @@ async function download_fpcup() {
 
 async function install_lazarus() {
 
-    await download_fpcup()
+    await download_fpcup();
+    await bash(['mkdir -p ' + fpcup_install_path]);
 
-    fpcParam = is_git_sha(fpc) ? '--fpcRevision=' : '--fpcBranch=';
-    lazParam = is_git_sha(laz) ? '--lazRevision=' : '--lazBranch=';
+    fpc_dir = fpcup_install_path + '/fpc';
+    laz_dir = fpcup_install_path + '/lazarus';
 
-    await bash([fpcup_executable, ' --skip=FPCCleanOnly,LazarusCleanOnly,startlazarus,bigide', fpcParam + fpc, lazParam + laz, '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
+    if (is_git_sha(fpc)) {
+        await bash(['git', 'clone', 'https://gitlab.com/freepascal.org/fpc/source', fpc_dir]);
+        await bash(['git', '-C', fpc_dir, 'checkout', fpc]);
+    } else {
+        await bash(['git', 'clone', '--depth 1', '--branch', fpc, 'https://gitlab.com/freepascal.org/fpc/source', fpc_dir]);
+    }
+    
+    if (is_git_sha(laz)) {
+        await bash(['git', 'clone', 'https://gitlab.com/freepascal.org/lazarus/lazarus', laz_dir]);
+        await bash(['git', '-C', laz_dir, 'checkout', laz]);
+    } else {
+        await bash(['git', 'clone', '--depth 1', '--branch', laz, 'https://gitlab.com/freepascal.org/lazarus/lazarus', laz_dir]);
+    }    
+
+    await bash([fpcup_executable, ' --only=FPCBuildOnly,LazBuildOnly,LazarusConfigOnly', '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
 
     // install cross compiler
     switch (process.platform) {

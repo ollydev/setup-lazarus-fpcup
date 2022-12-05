@@ -43,13 +43,12 @@ jobs:
             args: --os=darwin --cpu=aarch64 --widgetset=cocoa 
             
     steps:
+      - uses: actions/checkout@v3.1.0         
       - name: Install Lazarus
-        uses: ollydev/setup-lazarus-fpcup@master
+        uses: ./
         with:
           laz: lazarus_2_2_4
-          fpc: release_3_2_2
-      
-      - uses: actions/checkout@v3.1.0      
+          fpc: fixes_3_2   
       
       - name: Build Test
         run: |
