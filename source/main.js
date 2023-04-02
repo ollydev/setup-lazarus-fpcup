@@ -26,7 +26,8 @@ const
 	fpcup_install_path = unixify(path.join(path.dirname(process.env['GITHUB_WORKSPACE']), 'fpcup'));
 
 	cache_key = '[' + fpc + '][' + laz + '][' + fpcup_download_url + ']';
-
+    cache_disable = false
+    
 function is_git_sha(hash) {
 
     return /^[0-9a-f]{7,40}$/i.test(hash)
@@ -44,6 +45,9 @@ async function bash(command_line) {
 
 async function restore_lazarus() {
 
+    if (cache_disable) {
+        return false;
+    }
 	return await cache.restoreCache([fpcup_install_path], cache_key) != null;
 }
     
@@ -74,8 +78,8 @@ async function install_lazarus() {
     } else {
         await bash(['git', 'clone', '--depth 1', '--branch', laz, 'https://gitlab.com/freepascal.org/lazarus/lazarus', laz_dir]);
     }    
-
-    await bash([fpcup_executable, ' --only=FPCBuildOnly,LazBuildOnly,LazarusConfigOnly', '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
+    
+    await bash([fpcup_executable, '--only=FPCCleanOnly,FPCBuildOnly,LazarusCleanOnly,LazBuild,LazarusConfigOnly', '--noconfirm', '--verbose', '--installdir=' + fpcup_install_path]);
 
     // install cross compiler
     switch (process.platform) {
@@ -96,8 +100,10 @@ async function install_lazarus() {
 	await bash(['find "' + fpcup_install_path + '" -name "*.app" -type d -prune -exec rm -rf {} +']);
 	
 	// pass to post.js
-	core.exportVariable('SAVE_CACHE_DIR', fpcup_install_path);
-    core.exportVariable('SAVE_CACHE_KEY', cache_key);
+	if (!cache_disable) { 
+	    core.exportVariable('SAVE_CACHE_DIR', fpcup_install_path);
+        core.exportVariable('SAVE_CACHE_KEY', cache_key);
+    }
 }
 
 async function run() {

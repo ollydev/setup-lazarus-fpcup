@@ -10,7 +10,7 @@ inputs:
   fpcup:
     description: 'fpcup version to use: https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases'
     required: false
-    default: 'v2.2.0nf'
+    default: 'v2.2.0q'
 runs:
   using: 'node16'
   main: 'dist/index/index.js'
