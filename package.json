@@ -18,14 +18,14 @@
   },
   "homepage": "https://github.com/ollydev/setup-lazarus-fpcup#readme",
   "dependencies": {
-    "@actions/cache": "^1.0.11",
+    "@actions/cache": "^0.1.0",
     "@actions/core": "^1.10.0",
     "@actions/exec": "^1.1.1",
-    "@actions/tool-cache": "^1.7.2",
+    "@actions/tool-cache": "^2.0.1",
     "path": "^0.12.7",
     "process": "^0.11.10"
   },
   "devDependencies": {
-    "@vercel/ncc": "^0.31.1"
+    "@vercel/ncc": "^0.36.1"
   }
 }
