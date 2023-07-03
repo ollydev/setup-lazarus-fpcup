@@ -1,25 +1,25 @@
-Action which builds FPC and Lazarus using [fpcup](https://github.com/LongDirtyAnimAlf/Reiniero-fpcup). Useful for building projects with custom FPC & Lazarus versions.
+Github Action which builds FPC and Lazarus on a runner using [fpcup](https://github.com/LongDirtyAnimAlf/Reiniero-fpcup). Useful for building projects with custom FPC & Lazarus versions.
 
 Supported platforms:
 
-- Windows: win64, win32 (cross compiled)
-- Linux: x86_64, aarch64 (cross compiled)
-- Macos: x86_64, aarch64 (cross compiled)
+- Windows: `win64`, `win32` (cross compiled)
+- Linux: `x86_64`, `aarch64` (cross compiled)
+- MacOS: `x86_64`, `aarch64` (cross compiled)
 
-Installations are cached so expect that first builds could take ~20 minutes.
+Installations are cached so expect that first builds could take ~20 minutes (MacOS being the slowest)
+
 Caches that are not in a week are [removed](https://github.com/actions/cache#cache-limits)
-
 
 ---
 
 ### Required Inputs
   
-- `laz`: Lazarus GitLab branch or commit sha to install
-- `fpc`: FPC GitLab branch or commit sha to install
+- `laz` - Lazarus GitLab branch or commit sha to install
+- `fpc` - FPC GitLab branch or commit sha to install
 
 ### Optional Inputs
 
-- `fpcup`: fpcup version to use from https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases
+- `fpcup` - fpcup version to use from https://github.com/LongDirtyAnimAlf/Reiniero-fpcup/releases (defaults to [v2.2.0q](https://github.com/ollydev/setup-lazarus-fpcup/blob/master/action.yml))
 
 ---
 
@@ -65,7 +65,7 @@ jobs:
             
     steps:
       - name: Install Lazarus
-        uses: ollydev/setup-lazarus-fpcup@v3
+        uses: ollydev/setup-lazarus-fpcup@v3.3
         with:
           laz: lazarus_2_2_4
           fpc: release_3_2_2
@@ -80,7 +80,7 @@ jobs:
           lazbuild ${{ matrix.config.args }} test_lazarus.lpi
           
       - name: Run Test
-        if: matrix.config.name != 'Linux (aarch64)' && matrix.config.name != 'MacOS (aarch64)' # cross compiled
+        if: matrix.config.name != 'Linux (aarch64)' && matrix.config.name != 'MacOS (aarch64)' # cross compiled, cannot run on runner
         run: |
           ./test
 ```
